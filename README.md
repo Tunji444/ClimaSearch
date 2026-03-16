@@ -18,4 +18,4 @@ How It Works
 The user opens the app and grants location permission
 The app fetches current weather data for that location
 An algorithm maps weather conditions to clothing recommendations
-Suggestions are displayed clearly with optional detail (e.g. "light jacket", "waterproof boots")
+Suggestions are displayed clearly with optional detail (e.g. "light jacket", "waterproof boots")  Change
