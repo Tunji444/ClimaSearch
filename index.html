@@ -594,8 +594,15 @@
 
   <div class="search-panel">
     <div class="search-label">📍 Your Location</div>
+    <div id="geoBar" style="display:none;align-items:center;gap:10px;background:rgba(0,200,232,0.06);border:1px solid rgba(0,200,232,0.2);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--text)">
+      <span style="font-size:18px">📡</span>
+      <span id="geoBarMsg" style="flex:1">Allow location access for automatic detection?</span>
+      <button onclick="requestGeoLocation()" style="padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));border:none;color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:'Space Mono',monospace;white-space:nowrap">Allow</button>
+      <button onclick="dismissGeoBanner()" style="padding:6px 10px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer">✕</button>
+    </div>
     <div class="search-row">
       <input class="location-input" id="locationInput" type="text" placeholder="City, town, or postcode..." autocomplete="off"/>
+      <button class="search-btn" id="locateBtn" onclick="requestGeoLocation()" title="Use my location" style="padding:0 16px;background:var(--card);border:1px solid var(--border);color:var(--accent);font-size:18px;box-shadow:none">📡</button>
       <button class="search-btn" id="searchBtn" onclick="getWeather()">Get Outfit →</button>
     </div>
     <div class="chips-row">
@@ -798,8 +805,53 @@ document.getElementById('xpText').textContent=`${state.xp}/100`;
 document.getElementById('streakCount').textContent=state.streak;
 document.getElementById('footerDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 document.getElementById('locationInput').addEventListener('keydown',e=>{if(e.key==='Enter')getWeather();});
-renderAchievements();renderJournal();
+renderAchievements();renderJournal();initGeoPrompt();
 if(state.streak>0)showToast('🔥',`Welcome back! Your streak is ${state.streak} day${state.streak>1?'s':''}!`);
+}
+function initGeoPrompt(){
+  if(!('geolocation' in navigator)) return;
+  if(localStorage.getItem('cs_geo_dismissed')) return;
+  const bar=document.getElementById('geoBar');
+  if(bar) bar.style.display='flex';
+}
+function dismissGeoBanner(){
+  const bar=document.getElementById('geoBar');
+  if(bar) bar.style.display='none';
+  localStorage.setItem('cs_geo_dismissed','1');
+}
+function requestGeoLocation(){
+  const bar=document.getElementById('geoBar');
+  const msg=document.getElementById('geoBarMsg');
+  const btn=document.getElementById('locateBtn');
+  if(bar) bar.style.display='flex';
+  if(msg) msg.textContent='Detecting your location...';
+  if(btn) btn.textContent='⏳';
+  navigator.geolocation.getCurrentPosition(
+    async(pos)=>{
+      const{latitude:lat,longitude:lon}=pos.coords;
+      if(btn) btn.textContent='📡';
+      try{
+        const res=await fetch(BASE_URL+'/current.json?key='+API_KEY+'&q='+lat+','+lon);
+        if(!res.ok) throw new Error();
+        const data=await res.json();
+        const city=data.location.name;
+        document.getElementById('locationInput').value=city;
+        if(bar) bar.style.display='none';
+        showToast('📍','Location detected: '+city);
+        getWeather();
+      }catch(e){
+        if(msg) msg.textContent="Couldn't detect city. Enter manually below.";
+        if(btn) btn.textContent='📡';
+        setTimeout(()=>{if(bar) bar.style.display='none';},3000);
+      }
+    },
+    (err)=>{
+      if(btn) btn.textContent='📡';
+      if(msg) msg.textContent=(err.code===1)?'Location denied. Enter your city manually.':'Location unavailable. Enter manually.';
+      setTimeout(()=>{if(bar) bar.style.display='none';},3500);
+    },
+    {timeout:10000}
+  );
 }
 if(loadSession()){enterApp();}
 </script>
